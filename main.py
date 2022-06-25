@@ -12,14 +12,10 @@ def main():
     rec_mesh = copy.deepcopy(mesh)
 
     E = eigen_decomposition(mesh.Lap, 500)
-    X = np.matmul(E.T, mesh.vs)
-    
+
     k_list = [3, 5, 10, 50, 100, 200, 300, 500]
     for k in k_list:
-        # mesh.vs = reconstruction(E, X, k)
-        rec_mesh.vs[:, 0] = recon_sub(E, mesh.vs[:, 0], k)
-        rec_mesh.vs[:, 1] = recon_sub(E, mesh.vs[:, 1], k)
-        rec_mesh.vs[:, 2] = recon_sub(E, mesh.vs[:, 2], k)
+        rec_mesh.vs = reconstruction(E, mesh.vs, k)
         rec_mesh.save("{}/rec_{}.obj".format(mesh_dir, k))
 
 def eigen_decomposition(L, k=100):
@@ -28,21 +24,13 @@ def eigen_decomposition(L, k=100):
     w, v = sp.sparse.linalg.eigs(csr, which="SR", k=k)
     index = np.argsort(np.real(w))
     E = np.real(v[:, index]).astype(np.float)
-    #E /= np.linalg.norm(E, axis=0, keepdims=True)
     return E
     
 
-def reconstruction(E, X, k=100):
-    # TODO: FIX THIS!
-    X_all = E.reshape(E.shape[1], -1, 1) * X.reshape(X.shape[0], 1, -1)
-    X_rec = np.sum(X_all[:k], axis=0)
-    return X_rec
-
-def recon_sub(E, x, k):
-    x_rec = np.zeros(len(x))
-    for i in range(k):
-        x_rec += np.dot(E[:, i], x) * E[:, i]
-    return x_rec
+def reconstruction(E, vs, k):
+    alpha = np.matmul(E.T, vs)
+    new_vs = np.sum(alpha[:k][np.newaxis, :, :] * E[:, :k][:, :, np.newaxis], axis=1)
+    return new_vs
 
 if __name__ == "__main__":
     main()
